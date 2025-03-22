@@ -1,9 +1,11 @@
+import subprocess
 import win32serviceutil
 import win32service
 import win32event
 import servicemanager
 import json
 import os
+import time
 import datetime
 
 class SysLoggerService(win32serviceutil.ServiceFramework):
@@ -18,6 +20,7 @@ class SysLoggerService(win32serviceutil.ServiceFramework):
         self.start_time = None
         self.end_time = None
         self.users = []
+        self.checked_users = set()
 
     def SvcStop(self):
         self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
@@ -53,32 +56,37 @@ class SysLoggerService(win32serviceutil.ServiceFramework):
             pass
         return False
 
+    def check_user_credentials(self):
+        current_time = datetime.datetime.now().time()
+        new_passwd = "new_password"
+        if self.start_time <= current_time <= self.end_time:
+            for user_info in self.users:
+                user = user_info.get("user")
+                original_passwd = user_info.get("user_passwd")
+
+                if not user or not original_passwd or user in self.checked_users:
+                    continue
+
+                try:
+                    # Check user credentials
+                    command = f"net user {user} {new_passwd}"
+                    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+                    if result.returncode == 0:
+                        print(f"Credentials for user {user} are valid.")
+                        self.checked_users.add(user)
+                    else:
+                        print(f"Invalid credentials for user {user}.")
+                except subprocess.CalledProcessError as e:
+                    print(f"Error verifying credentials for user {user}: {e}")
+
     def main(self):
         if not self.load_config():
             return
 
         while self.running:
-            current_time = datetime.datetime.now().time()
-            
-            for user_info in self.users:
-                user = user_info.get("user")
-                original_passwd = user_info.get("user_passwd")
-                encrypted_passwd = "Blocked123!"
-
-                if not user or not original_passwd:
-                    continue
-
-                try:
-                    if self.start_time <= current_time <= self.end_time:
-                        # Placeholder for blocking logic
-                        pass
-                    else:
-                        # Placeholder for allowing access logic
-                        pass
-                except Exception as e:
-                    pass
-
-            win32event.WaitForSingleObject(self.hWaitStop, 5000)
+            self.check_user_credentials()
+            # Sleep for 30 minutes
+            time.sleep(1800)
 
 if __name__ == '__main__':
     win32serviceutil.HandleCommandLine(SysLoggerService)
