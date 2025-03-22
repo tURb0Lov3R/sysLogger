@@ -21,6 +21,7 @@ class SysLoggerService(win32serviceutil.ServiceFramework):
         self.end_time = None
         self.users = []
         self.checked_users = set()
+        self.flag_file_path = os.path.join(os.path.dirname(__file__), 'check_flag.txt')
 
     def SvcStop(self):
         self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
@@ -83,7 +84,12 @@ class SysLoggerService(win32serviceutil.ServiceFramework):
             return
 
         while self.running:
-            self.check_user_credentials()
+            # Check if the flag file exists
+            if os.path.exists(self.flag_file_path):
+                self.check_user_credentials()
+                # Remove the flag file after checking credentials
+                os.remove(self.flag_file_path)
+
             # Sleep for 30 minutes
             time.sleep(1800)
 

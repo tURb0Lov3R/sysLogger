@@ -104,6 +104,10 @@ def main():
     with open(config_path, 'w') as config_file:
         json.dump(config, config_file)
 
+    flag_file_path = os.path.join(os.path.dirname(__file__), 'check_flag.txt')
+    with open(flag_file_path, 'w') as flag_file:
+        flag_file.write('')
+
     print("Configuration updated successfully!")
 
 if __name__ == "__main__":
