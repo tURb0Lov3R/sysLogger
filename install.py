@@ -3,6 +3,7 @@ import subprocess
 import shutil
 import sys
 import ctypes
+import json
 
 def is_admin():
     """Check if the script is running with administrator privileges."""
@@ -29,31 +30,27 @@ def run_command(command):
         print(f"Failed to execute: {command}")
         print(e.stderr)
 
-def install_chocolatey():
-    """Installs Chocolatey if not found."""
-    if not shutil.which("choco"):
-        print("Chocolatey not found. Installing Chocolatey...")
-        os.system("@powershell -NoProfile -ExecutionPolicy Bypass -Command \"[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))\"")
-    else:
-        print("Chocolatey is already installed.")
-
-def install_scoop():
-    """Installs Scoop if not found."""
-    if not shutil.which("scoop"):
-        print("Scoop not found. Installing Scoop...")
-        run_command("powershell -command \"iwr -useb get.scoop.sh | iex\"")
-    else:
-        print("Scoop is already installed.")
-
 def install_packages():
-    """Installs necessary packages using Chocolatey."""
-    packages = ["pywin32",]
+    """Installs necessary Python packages."""
+    packages = ["pywin32"]
     for package in packages:
-        if not shutil.which(package):
-            print(f"Installing {package}...")
-            run_command(f"choco install {package} -y")
-        else:
-            print(f"{package} is already installed.")
+        print(f"Installing {package}...")
+        run_command(f"pip install {package}")
+
+def create_default_config():
+    """Creates a default config.json file if it doesn't exist."""
+    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    if not os.path.exists(config_path):
+        print(f"Creating default config.json at {config_path}")
+        default_config = {
+            "start_time": "08:00",
+            "end_time": "17:00",
+            "users": []
+        }
+        with open(config_path, 'w') as config_file:
+            json.dump(default_config, config_file, indent=4)
+    else:
+        print(f"config.json already exists at {config_path}")
 
 def install_service():
     """Installs the SysLoggerService."""
@@ -68,11 +65,8 @@ def main():
         run_as_admin()
         return
 
-    install_chocolatey()
-    install_scoop()
-    run_command("choco upgrade all -y")
-    run_command("scoop update")
     install_packages()
+    create_default_config()
     install_service()
     print("Installation completed successfully!")
 
