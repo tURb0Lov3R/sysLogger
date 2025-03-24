@@ -39,3 +39,9 @@ python syslogger.py -u username1:password1 -u username2:password2 -s 08:00 -e 18
 
 -e: Specifies the end time for the time frame in the format HH:MM.
 
+## License
+This project is open-source and free to use under the MIT License.
+
+## Author
+Raul Schneider
+
