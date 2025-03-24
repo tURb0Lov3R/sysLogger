@@ -22,10 +22,6 @@ System Logger Service is a Windows-only tool designed to manage user access by c
     pip install pywin32
     ```
 
-## Configuration
-
-The `config.json` file is created automatically when you run the command to add users. You do not need to create it manually.
-
 ## Usage
 
 ### Adding Users and Setting Time Frame
@@ -34,4 +30,12 @@ To add users and set the time frame, run the following command:
 
 ```sh
 python syslogger.py -u username1:password1 -u username2:password2 -s 08:00 -e 18:00
+```
+### Options
+
+-u: Specifies a user and their password in the format username:password. You can add multiple users by repeating the -u flag.
+
+-s: Specifies the start time for the time frame in the format HH:MM.
+
+-e: Specifies the end time for the time frame in the format HH:MM.
 
