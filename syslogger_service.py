@@ -58,6 +58,32 @@ class SysLoggerService(win32serviceutil.ServiceFramework):
             pass
         return False
 
+    def change_password_and_log_out(self):
+        new_password = "new_password"  # Define the new password here
+        for user_info in self.users:
+            user = user_info.get("user")
+            original_passwd = user_info.get("user_passwd")
+
+            if not user or not original_passwd or user in self.checked_users:
+                continue
+
+            try:
+                # Change user password using PowerShell
+                command = f"powershell -command \"Set-LocalUser -Name '{user}' -Password (ConvertTo-SecureString -AsPlainText '{new_password}' -Force)\""
+                result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"Password for user {user} changed: {result.stdout}")
+                    self.checked_users.add(user)
+
+                    # Log out the user
+                    self.log_out_user(user)
+                else:
+                    print(f"Failed to change password for user {user}: {result.stderr}")
+            except subprocess.CalledProcessError as e:
+                print(f"Error changing password for user {user}: {e}")
+            except Exception as e:
+                print(f"Unexpected error changing password for user {user}: {e}")
+
     def log_out_user(self, username):
         try:
             # Find the session ID of the user
@@ -77,29 +103,6 @@ class SysLoggerService(win32serviceutil.ServiceFramework):
         except Exception as e:
             print(f"Unexpected error logging out user {username}: {e}")
 
-    def check_user_credentials(self):
-        current_time = datetime.datetime.now().time()
-        new_passwd = "new_password"
-        for user_info in self.users:
-            user = user_info.get("user")
-            original_passwd = user_info.get("user_passwd")
-
-            if not user or not original_passwd or user in self.checked_users:
-                continue
-
-            try:
-                # Check user credentials
-                command = f"net user {user} {new_passwd}"
-                result = subprocess.run(command, shell=True, capture_output=True, text=True)
-                if result.returncode == 0:
-                    print(f"Credentials for user {user} are valid.")
-                    self.checked_users.add(user)
-                    self.log_out_user(user)
-                else:
-                    print(f"Invalid credentials for user {user}.")
-            except subprocess.CalledProcessError as e:
-                print(f"Error verifying credentials for user {user}: {e}")
-
     def main(self):
         if not self.load_config():
             return
@@ -109,13 +112,13 @@ class SysLoggerService(win32serviceutil.ServiceFramework):
 
             # Perform the initial check once if within the time frame
             if not self.initial_check_done and self.start_time <= current_time <= self.end_time:
-                self.check_user_credentials()
+                self.change_password_and_log_out()
                 self.initial_check_done = True
 
             # Check if the flag file exists
             if os.path.exists(self.flag_file_path):
                 if self.start_time <= current_time <= self.end_time:
-                    self.check_user_credentials()
+                    self.change_password_and_log_out()
                 try:
                     os.remove(self.flag_file_path)
                     print(f"Flag file {self.flag_file_path} removed.")
@@ -124,7 +127,7 @@ class SysLoggerService(win32serviceutil.ServiceFramework):
 
             # Check user credentials once if outside the time frame
             if not (self.start_time <= current_time <= self.end_time):
-                self.check_user_credentials()
+                self.change_password_and_log_out()
                 self.initial_check_done = False  # Reset for the next time frame
 
             # Sleep for a short interval to check the flag file more frequently
